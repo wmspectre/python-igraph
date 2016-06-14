@@ -6648,13 +6648,14 @@ PyObject
   static char *kwlist[] =
     { "weights", "niter", "start_temp",
       "seed", "minx", "maxx", "miny", "maxy", "minz", "maxz", "dim",
-      "grid", NULL };
+      "grid", "new_v", NULL };
   igraph_matrix_t m;
   igraph_bool_t use_seed=0;
   igraph_vector_t *weights=0;
   igraph_vector_t *minx=0, *maxx=0;
   igraph_vector_t *miny=0, *maxy=0;
   igraph_vector_t *minz=0, *maxz=0;
+  igraph_vector_t *new_v=0;
   igraph_layout_grid_t grid = IGRAPH_LAYOUT_AUTOGRID;
   int ret;
   long int niter = 500, dim = 2;
@@ -6664,6 +6665,7 @@ PyObject
   PyObject *minx_o=Py_None, *maxx_o=Py_None;
   PyObject *miny_o=Py_None, *maxy_o=Py_None;
   PyObject *minz_o=Py_None, *maxz_o=Py_None;
+  PyObject *new_v_o=Py_None;
   PyObject *grid_o=Py_None;
 
 #define DESTROY_VECTORS { \
@@ -6674,15 +6676,16 @@ PyObject
   if (maxy)    { igraph_vector_destroy(maxy); free(maxy); } \
   if (minz)    { igraph_vector_destroy(minz); free(minz); } \
   if (maxz)    { igraph_vector_destroy(maxz); free(maxz); } \
+  if (new_v)   { igraph_vector_destroy(new_v);free(new_v); } \
 }
 
   start_temp = sqrt(igraph_vcount(&self->g)) / 10.0;
 
-  if (!PyArg_ParseTupleAndKeywords(args, kwds, "|OldOOOOOOOlO", kwlist, &wobj,
+  if (!PyArg_ParseTupleAndKeywords(args, kwds, "|OldOOOOOOOlOO", kwlist, &wobj,
                                    &niter, &start_temp,
                                    &seed_o, &minx_o, &maxx_o,
                                    &miny_o, &maxy_o, &minz_o, &maxz_o, &dim,
-                                   &grid_o))
+                                   &grid_o, &new_v_o))
     return NULL;
 
   if (dim != 2 && dim != 3) {
@@ -6735,6 +6738,12 @@ PyObject
     igraphmodule_handle_igraph_error();
     return NULL;
   }
+  if (igraphmodule_attrib_to_vector_t(new_v_o, self, &new_v, ATTRIBUTE_TYPE_EDGE)) {
+    igraph_matrix_destroy(&m);
+    DESTROY_VECTORS;
+    igraphmodule_handle_igraph_error();
+    return NULL;
+  }
   if (dim > 2) {
     if (igraphmodule_attrib_to_vector_t(minz_o, self, &minz, ATTRIBUTE_TYPE_EDGE)) {
       igraph_matrix_destroy(&m);
@@ -6753,11 +6762,11 @@ PyObject
   if (dim == 2) {
     ret = igraph_layout_fruchterman_reingold
       (&self->g, &m, use_seed, (igraph_integer_t) niter,
-       start_temp, grid, weights, minx, maxx, miny, maxy);
+       start_temp, grid, weights, minx, maxx, miny, maxy, new_v);
   } else {
     ret = igraph_layout_fruchterman_reingold_3d
       (&self->g, &m, use_seed, (igraph_integer_t) niter,
-       start_temp, weights, minx, maxx, miny, maxy, minz, maxz);
+       start_temp, weights, minx, maxx, miny, maxy, minz, maxz, new_v);
   }
 
   DESTROY_VECTORS;
